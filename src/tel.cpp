@@ -55,6 +55,7 @@ Tel::Tel(const int depth,const std::weak_ptr<Tel>& parent,
     type = src.type;
 
     value_ind = src.value_ind;
+
     if(type==0){ // terminal
         term = ptree->terms[value_ind];
     }

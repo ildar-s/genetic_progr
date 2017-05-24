@@ -6,6 +6,8 @@
 #include "common_0.h"
 
 #include <map>
+#include <fstream>
+#include <iomanip>
 
 struct Ttrees_parameters{
     Ttrees_parameters():
@@ -34,6 +36,35 @@ struct Ttrees_parameters{
         pr("ratio_ss =",ratio_ss);
         p.print_all();
     }
+    void save(const std::string &filename){
+        std::ofstream(filename,std::ios::out|std::ios::binary)<< 
+            ntrees << std::endl <<
+            max_depth_ex << std::endl <<
+            ngen_max << std::endl <<
+            err_thr << std::endl <<
+            lam << std::endl <<
+            ratio_ss << std::endl <<
+            p.ndim << std::endl <<
+            p.max_depth << std::endl <<
+            p.element_function_probability << std::endl <<
+            p.terminal_const_probability << std::endl <<
+            p.logit;
+    }
+    void load(const std::string &filename){
+        std::ifstream(filename,std::ios::in)>> 
+            ntrees >> 
+            max_depth_ex >> 
+            ngen_max >> 
+            err_thr >> 
+            lam >> 
+            ratio_ss >> 
+            p.ndim >> 
+            p.max_depth >> 
+            p.element_function_probability >> 
+            p.terminal_const_probability >> 
+            p.logit;
+    }
+
 };
 
 struct Treport_detail{

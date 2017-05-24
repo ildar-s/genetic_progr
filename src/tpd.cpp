@@ -83,7 +83,7 @@ void Tpd::read_csv(const std::string &filename,
 
     if(ncols!=columns.size()){
         if((int)ncols-(int)columns.size()==1){
-            columns.insert(columns.begin(),"empty");
+            columns.insert(columns.begin(),"index");
         }
         else{
             throw xX_0("read_csv: wrong num of columns");

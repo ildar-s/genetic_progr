@@ -43,7 +43,6 @@ class Tel{
         std::weak_ptr<Tel> parent;
         std::list<std::shared_ptr<Tel>> ch;
         std::unique_ptr<Ttk> tk;
-        double cvalue; // TMP!!!
 };
 
 

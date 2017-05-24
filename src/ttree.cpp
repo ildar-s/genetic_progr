@@ -116,7 +116,7 @@ Ttree::Ttree(const int ndim):
 }
 
 
-Ttree::Ttree(const Ttree_parameters p,
+Ttree::Ttree(const Ttree_parameters &p,
         const std::function<double(const std::vector<double>&,const std::vector<double>&)> &J):
     Ttree(p.ndim)
 {
@@ -150,11 +150,14 @@ Ttree::Ttree(const Ttree &src, const int cpoint):
     Ttree(src.p.ndim)
 {
     p = src.p;
+
     J_ = src.J_;
+
     root = std::make_shared<Tel>(0,std::weak_ptr<Tel>(),this);
 
     const std::shared_ptr<Tel> &root_src = src.root;
     std::shared_ptr<Tel> root_src_ = nullptr;
+
 
     if(cpoint<0){
         root_src_ = root_src;
@@ -184,9 +187,15 @@ Ttree::Ttree(const Ttree &src, const int cpoint):
     assign_els(root_src_,root);
 }
 
-Ttree::Ttree(const std::string &s):
+
+
+Ttree::Ttree(const std::string &s, const Ttree_parameters * const p_):
     Ttree(0)
 {
+    if(p_!=nullptr){
+        this->p=*p_;
+    }
+
     std::string s_ = reduce_br(s);
     //pr("\ninitial ->",s_);
 
@@ -217,8 +226,9 @@ Ttree::Ttree(const std::string &s):
     if(!els.size())
         throw xX_0("Ttree(s): no elements generated");
 
-    Ttree_parameters p;
-    p.max_depth = els.back()->depth;
+    if(p_==nullptr){
+        p.max_depth = els.back()->depth;
+    }
 
 
     // are var_inds represented by strings(e.g. x["column 3"]) ?
@@ -256,7 +266,9 @@ Ttree::Ttree(const std::string &s):
             }
         }
 
-        p.ndim = sinds.size();
+        if(p_==nullptr){
+            p.ndim = sinds.size();
+        }
     }
     else{
         int max_ind=-1;
@@ -269,7 +281,10 @@ Ttree::Ttree(const std::string &s):
                 }
             }
         }
-        p.ndim = max_ind+1;
+
+        if(p_==nullptr){
+            p.ndim = max_ind+1;
+        }
     }
 
     if(p.ndim>10000)
@@ -285,14 +300,26 @@ Ttree::Ttree(const std::string &s):
         else{ //terminal
             if(el->tk->isvar){ //var
                 el->value_ind = el->tk->var_ind+consts.size();
-                el->term = terms[el->value_ind];
             }
             else{//const
-                el->cvalue=el->tk->cvalue;
-                el->term = std::make_pair(&el->cvalue,el->tk->val);
-                if(el->cvalue<0)
-                    el->term.second = "("+el->term.second+")";
+
+                double cval = el->tk->cvalue;
+
+                double min_diff=1e10;
+                int idx=-1;
+
+                for(size_t i=0;i<consts.size();++i){
+                    double diff = std::abs(consts[i]-cval);
+                    if(diff<min_diff){
+                        min_diff = diff;
+                        idx = i;
+                    }
+                }
+                if(idx<0)
+                    xX_0("error parsing const from string");
+                el->value_ind = idx;
             }
+            el->term = terms[el->value_ind];
         }
     }
     
@@ -313,6 +340,7 @@ void Ttree::assign_els(const std::shared_ptr<Tel> &root_src, std::shared_ptr<Tel
 
     auto el_src = els_src.begin();
     auto el_dest = els_dest.begin();
+
     for(; el_src!=els_src.end(); ++el_src,++el_dest){
 
         if(*el_src==nullptr) 

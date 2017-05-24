@@ -8,7 +8,6 @@
 
 const std::string var_symbol{"x"};
 
-
 Ttk::Ttk(const std::string &s, const Tf *ff): 
     src(s),ff(ff)
 {

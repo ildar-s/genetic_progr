@@ -16,26 +16,12 @@ include_directories(${Boost_INCLUDE_DIRS})
 link_directories(${Boost_LIBRARY_DIR})
 
 
-
-find_package( PythonLibs 2.7 REQUIRED )
-find_package( PythonInterp 2.7 REQUIRED )
-include_directories(${PYTHON_INCLUDE_DIRS})
-
-
 set(SRC_DIR ${PROJECT_SOURCE_DIR}/src)
-#FILE(GLOB SOURCE ${PROJECT_SOURCE_DIR}/src/*.cpp)
 set(SOURCE ${SRC_DIR}/tpd.cpp ${SRC_DIR}/ttk.cpp ${SRC_DIR}/tel.cpp ${SRC_DIR}/ttree.cpp ${SRC_DIR}/ttrees.cpp)
 set(SOURCE ${SOURCE} ${SRC_DIR}/${PROG_NAME}.cpp)
 
-FILE(GLOB OWN_HEADERS ${PROJECT_SOURCE_DIR}/include/*.h)
-
-set(3_INC_DIR "${PROJECT_SOURCE_DIR}/../../3rdparty/include")
-set(HEADERS
-    "${3_INC_DIR}/matplotlibcpp.h"
-)
-
+FILE(GLOB HEADERS ${PROJECT_SOURCE_DIR}/include/*.h)
 include_directories(${PROJECT_SOURCE_DIR}/include/)
-include_directories(${3_INC_DIR}/)
 
 #set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_BUILD_TYPE Release)
@@ -53,10 +39,10 @@ include_directories("${PROJECT_BINARY_DIR}")
 set( CMAKE_VERBOSE_MAKEFILE off )
 
 
-set(CMAKE_CXX_FLAGS "-Wall -std=c++11 -std=c++1y -O0 -pg")
-#set(CMAKE_CXX_FLAGS "-Wno-deprecated -std=c++11 -std=c++1y")
+#set(CMAKE_CXX_FLAGS "-Wall -std=c++11 -std=c++1y -O0 -pg")
+set(CMAKE_CXX_FLAGS "-Wall -std=c++11 -std=c++1y -Ofast")
 if(Boost_FOUND)
-    add_executable(${PROG_NAME} ${SOURCE} ${OWN_HEADERS} ${HEADERS}) 
-    target_link_libraries( ${PROG_NAME} ${PYTHON_LIBRARIES} ${Boost_LIBRARIES}  )
+    add_executable(${PROG_NAME} ${SOURCE} ${HEADERS}) 
+    target_link_libraries( ${PROG_NAME} ${Boost_LIBRARIES}  )
 endif()
 

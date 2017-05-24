@@ -16,6 +16,7 @@ typedef std::vector<tvd> tvvd;
 
 typedef std::pair<tvvd,tvd> txy;
 
+enum class LOG : char {SILENT,INFO,DEBUG};
 
 inline void pr(){
     std::cout << std::endl;

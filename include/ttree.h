@@ -46,10 +46,10 @@ class Ttree{
     public:
         friend class Tel;
         Ttree(const int ndim);
-        Ttree(const Ttree_parameters p,const std::function<double(const std::vector<double>&, 
+        Ttree(const Ttree_parameters &p,const std::function<double(const std::vector<double>&, 
                 const std::vector<double>&)> &J=nullptr);
         Ttree(const Ttree &src, const int cpoint=-1);
-        Ttree(const std::string &s);
+        Ttree(const std::string &s, const Ttree_parameters * const p_=nullptr);
 
         void update_ndim(const int ndim);
 
@@ -111,11 +111,11 @@ class Ttree{
 
         std::shared_ptr<Tel> root;
 
+        Ttree_parameters p;
 
         std::vector<double> x;
         std::vector<std::pair<double*,std::string>> terms;
 
-        Ttree_parameters p;
         //static int ndim_st;
         std::function<double(const std::vector<double>&, const std::vector<double>&)> J_;
 };
