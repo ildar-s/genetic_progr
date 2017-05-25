@@ -194,7 +194,7 @@ tvd predict_c_bin(std::vector<Ttree> &ts, const tvvd &X){
 
 
 void fit_with_bs(const txy &xy_train, Ttrees_parameters &p, const int bs_iterations,
-        const std::string f_file_name, const LOG log_level=LOG::INFO){
+        const std::string f_file_name, const LOG logging=LOG::INFO){
 
     Treport_detail rd;
 
@@ -209,7 +209,7 @@ void fit_with_bs(const txy &xy_train, Ttrees_parameters &p, const int bs_iterati
     p.save(f_file_name+".p");
 
     for(int i=0;i<bs_iterations;++i){
-        if(log_level > LOG::SILENT){
+        if(logging > LOG::SILENT){
             pr("\niteration no",i);
         }
        
@@ -219,12 +219,12 @@ void fit_with_bs(const txy &xy_train, Ttrees_parameters &p, const int bs_iterati
         std::set<size_t> &ss_no = std::get<2>(xyss);
 
         /* init new forest */
-        Ttrees trs(p);
+        Ttrees trs(p,logging);
 
         /* fitting on the bs-subsample */
         trs.fit(xy_bs,&rd);
 
-        if(log_level > LOG::SILENT){
+        if(logging > LOG::SILENT){
             pr_("* min err=",rd.min_err);
             pr_("fitting time=",rd.dur);
             pr_("number of cross-overs =",rd.num_of_co);
@@ -243,7 +243,7 @@ void fit_with_bs(const txy &xy_train, Ttrees_parameters &p, const int bs_iterati
 
         /* 0) Gathering the oob subsample */
         txy xy_test0;
-        if(log_level > LOG::SILENT){
+        if(logging > LOG::SILENT){
             for(const auto i: ss_no){
                 xy_test0.first.push_back(xy_train.first[i]);
                 xy_test0.second.push_back(xy_train.second[i]);
@@ -253,11 +253,11 @@ void fit_with_bs(const txy &xy_train, Ttrees_parameters &p, const int bs_iterati
 
         /* 1) Quality of the last best_tree on the oob subsample: */
         tvd y_pred;
-        if(log_level > LOG::SILENT){
+        if(logging > LOG::SILENT){
             y_pred = t_best.predict_bin(xy_test0.first);
             double acc = accuracy(xy_test0.second,y_pred);
 
-            if(log_level > LOG::SILENT){
+            if(logging > LOG::SILENT){
                 pr("acc_oob(last best_tree) =",acc);
             }
         }
@@ -267,7 +267,7 @@ void fit_with_bs(const txy &xy_train, Ttrees_parameters &p, const int bs_iterati
         /*    each best_tree only predicts within its oob subsample, but over time, 
          *    the entire sample range [0..bx.size) becomes populated */
 
-        if(log_level > LOG::SILENT){
+        if(logging > LOG::SILENT){
             /* accumulating prediction: current best_tree predicts within its oob range */
             auto it_ss = ss_no.begin();
             auto it_y = y_pred.begin();
@@ -291,7 +291,7 @@ void fit_with_bs(const txy &xy_train, Ttrees_parameters &p, const int bs_iterati
 }
 
 void fit(const txy &xy_train, Ttrees_parameters &p, const int n_iter,
-        const std::string f_file_name, const LOG log_level=LOG::INFO){
+        const std::string f_file_name, const LOG logging=LOG::INFO){
 
 
     Treport_detail rd;
@@ -307,17 +307,17 @@ void fit(const txy &xy_train, Ttrees_parameters &p, const int n_iter,
     p.save(f_file_name+".p");
 
     for(int i=0;i<n_iter;++i){
-        if(log_level > LOG::SILENT && n_iter>1){
+        if(logging > LOG::SILENT && n_iter>1){
             pr("\niteration no",i);
         }
        
         /* init new forest */
-        Ttrees trs(p);
+        Ttrees trs(p,logging);
 
-        /* fitting on the bs-subsample */
+        /* fitting on bs-subsample */
         trs.fit(xy_train,&rd);
 
-        if(log_level > LOG::SILENT){
+        if(logging > LOG::SILENT){
             pr("* min err =",rd.min_err);
             pr("fitting time =",rd.dur);
             pr("number of cross-overs =",rd.num_of_co);
@@ -333,18 +333,18 @@ void fit(const txy &xy_train, Ttrees_parameters &p, const int n_iter,
 
         tvd y_pred;
         /* Quality of the last best_tree: */
-        if(log_level > LOG::SILENT){
+        if(logging > LOG::SILENT){
             y_pred = t_best.predict_bin(xy_train.first);
             double acc = accuracy(xy_train.second,y_pred);
 
-            if(log_level > LOG::SILENT){
+            if(logging > LOG::SILENT){
                 pr("acc(best_tree) =",acc);
             }
         }
 
 
         /* 2) Quality of the ensemble of best_tree-s so far */
-        if(log_level > LOG::SILENT){
+        if(logging > LOG::SILENT){
             for(size_t i=0;i<bx.size();++i){
                 bx[i]+=y_pred[i];
             }
@@ -365,22 +365,22 @@ void fit(const txy &xy_train, Ttrees_parameters &p, const int n_iter,
 
 void regressor(Ttrees_parameters &p, const std::string &d_filename, 
         const bool csv_has_header, const std::string &f_filename,
-        const int n_iter, const bool use_bs){
+        const int n_iter, const bool use_bs, const LOG logging=LOG::INFO){
     
     txy xy = read_xy(d_filename,true,csv_has_header);
 
     if(use_bs){
-        fit_with_bs(xy, p, n_iter, f_filename);
+        fit_with_bs(xy, p, n_iter, f_filename,logging);
     }
     else{
-        fit(xy, p, n_iter,f_filename);
+        fit(xy, p, n_iter,f_filename,logging);
     }
 
 }
 
 void predict_test(Ttrees_parameters &p, const std::string &d_filename, 
         const bool csv_has_header, const std::string &i_filename,
-        const std::string &p_filename){
+        const std::string &p_filename,const LOG logging=LOG::INFO){
 
     p.load(i_filename+".p");
 
@@ -414,13 +414,8 @@ void predict_test(Ttrees_parameters &p, const std::string &d_filename,
 
 
 void example_tree_viz(Ttrees_parameters &p){
-    auto tp_ = make_time_point(01,01,2017,10,0);
-    auto i_seed = duration_cast<seconds>(system_clock::now()-tp_).count();
-    dre.seed(i_seed);
-
     Ttree tree(p.p);
     tree.viz();
-
     std::string s = tree.to_string();
     pr("string:",s);
 }
@@ -485,8 +480,8 @@ int main(int argc, char** argv){
             );
     arg_keys.push_back(
         std::make_unique<targ_key<int>>("ndim",po::value<int>()->default_value(0),
-         "dimensionality of the parameter space. Only need to set if no data is provided, \
-         e.g. for random tree vizualization", &p.p.ndim)
+         "dimensionality of the parameter space. Only need to set if no data is provided, "\
+         "e.g. for random tree vizualization", &p.p.ndim)
             );
     arg_keys.push_back(
         std::make_unique<targ_key<int>>("ngen_max",po::value<int>()->default_value(30000),
@@ -498,28 +493,40 @@ int main(int argc, char** argv){
             );
     arg_keys.push_back(
         std::make_unique<targ_key<double>>("lambda",po::value<double>()->default_value(0.1, "0.1"),
-         "is a parameter controlling depth of cross-over points: \
-         lower lambdas mean higher chance of picking lower-depth \
-         points thus compensating for the natural abundance of high-depth \
-         nodes in trees (e.g. leafs)",&p.lam)
+         "is a parameter controlling depth of cross-over points: "\
+         "lower lambdas mean higher chance of picking lower-depth "\
+         "points thus compensating for the natural abundance of high-depth "\
+         "nodes in trees (e.g. leafs)",&p.lam)
             );
     arg_keys.push_back(
         std::make_unique<targ_key<double>>("ratio_ss",po::value<double>()->default_value(0.01, "0.01"),
-         "ratio of trees considered for cross-over to the total number of trees: \
-         the selection among only a subset of the forest gives better chance to \
-         the not-so-good trees to be selected too.",&p.ratio_ss)
+         "ratio of trees considered for cross-over to the total number of trees: "\
+         "the selection among only a subset of the forest gives better chance to "\
+         "the not-so-good trees to be selected too.",&p.ratio_ss)
             );
     arg_keys.push_back(
         std::make_unique<targ_key<double>>("func_prob",po::value<double>()->default_value(0.85, "0.85"),
-         "probability of creating a function node (as opposed to creating a terminal node) \
-         in forest initialization",&p.p.element_function_probability)
+         "probability of creating a function node (as opposed to creating a terminal node) "\
+         "in forest initialization",&p.p.element_function_probability)
             );
     arg_keys.push_back(
         std::make_unique<targ_key<double>>("term_const_prob",po::value<double>()->default_value(0.2, "0.2"),
-         "probability of creating a constant terminal node (as opposed to creating a variable terminal node) \
-         in forest initialization",&p.p.terminal_const_probability)
+         "probability of creating a constant terminal node (as opposed to creating a variable terminal node) "\
+         "in forest initialization",&p.p.terminal_const_probability)
             );
 
+    arg_keys.push_back(
+        std::make_unique<targ_key<double>>("consts_min",po::value<double>()->default_value(-10, "-10.0"),
+         "minimum value of terminal constants",&p.p.consts_min)
+            );
+    arg_keys.push_back(
+        std::make_unique<targ_key<double>>("consts_max",po::value<double>()->default_value(10, "10.0"),
+         "maximum value of terminal constants",&p.p.consts_max)
+            );
+    arg_keys.push_back(
+        std::make_unique<targ_key<int>>("consts_n",po::value<int>()->default_value(20, "20"),
+         "number of different terminal constants",&p.p.consts_n)
+            );
 
     po::options_description desc_gp("Parameters of GP algorithm");
 
@@ -531,10 +538,12 @@ int main(int argc, char** argv){
     po::options_description desc_io("I/O control");
 
     desc_io.add_options() ("cfg",po::value<std::string>(),
-            "GP configuration file");
+            "GP configuration file, "\
+            "if not present, will attempt to read \"default.cfg\", "\
+            "if not present either, will use default values");
     desc_io.add_options() ("data,d",po::value<std::string>(),
-            "CSV file with data, first column always ignored,\
-            if it's training data then last column - labels (target)");
+            "CSV file with data, first column always ignored, "\
+            "if it's training data then last column - labels (target)");
     desc_io.add_options() ("final_regressor,f",po::value<std::string>(),
             "final regressor file");
     desc_io.add_options() ("initial_regressor,i",po::value<std::string>(),
@@ -547,12 +556,19 @@ int main(int argc, char** argv){
 
     po::options_description desc_wf("Workflow control");
 
+    desc_wf.add_options() ("logging",po::value<std::string>()->default_value("info"),
+            "logging level: \"silent\", \"info\", or \"debug\"");
     desc_wf.add_options() ("n_iter",po::value<int>()->default_value(1),
             "number of fitting procedures and resulting decision trees");
     desc_wf.add_options() ("bs", po::bool_switch()->default_value(false), 
-            "use bootstrapped subsample of data for each fitting procedure");
+            "use bootstrapped subsample for each fitting procedure");
     desc_wf.add_options() ("testonly,t", po::bool_switch()->default_value(false), 
             "ignore label information and just test");
+    desc_wf.add_options() ("random_seed",po::value<int>(),"random seed");
+
+    desc_wf.add_options() ("random_tree_demo", po::bool_switch()->default_value(false), 
+            "vizualize a random tree and quit");
+    
 
 
     po::options_description desc("All options");
@@ -585,17 +601,10 @@ int main(int argc, char** argv){
         po::store(po::parse_config_file<char>(cfg_filenames.top().c_str(),desc),vm);
     }
     catch(const std::exception &e){
-        pr("couldn't read any config file",e.what());
-        return 1;
+        pr("couldn't read any GP config file, will use defaults");
     }
 
 
-
-
-    auto tp_ = make_time_point(01,01,2017,10,0);
-    auto i_seed = duration_cast<seconds>(system_clock::now()-tp_).count();
-    i_seed = 42;
-    dre.seed(i_seed);
 
     for(auto &k : arg_keys){
         k->fill_p(&vm);
@@ -616,21 +625,40 @@ int main(int argc, char** argv){
         p_filename = vm["predictions"].as<std::string>();
     }
 
-    bool csv_has_header = true;
-    if(vm.count("csv_has_header")){
-        csv_has_header = vm["csv_has_header"].as<std::string>()=="yes";
-    }
+    bool csv_has_header = vm["csv_has_header"].as<std::string>()=="yes";
+
+
 
     int n_iter = vm["n_iter"].as<int>();
     bool use_bs = vm["bs"].as<bool>();
 
+    std::map<std::string,LOG> lmap{
+        {"silent",LOG::SILENT},{"info",LOG::INFO},{"debug",LOG::DEBUG} };
+
+    LOG logging = lmap[vm["logging"].as<std::string>()];
 
 
+    int i_seed;
+    if(vm.count("random_seed")){
+        i_seed = vm["random_seed"].as<int>();
+    }
+    else{
+        auto tp_ = make_time_point(01,01,2017,10,0);
+        i_seed = duration_cast<seconds>(system_clock::now()-tp_).count();
+    }
+    dre.seed(i_seed);
+
+
+
+    if(vm["random_tree_demo"].as<bool>()){
+        example_tree_viz(p);
+        return 0;
+    }
     if(vm.count("final_regressor")){
-        regressor(p,d_filename,csv_has_header,f_filename,n_iter,use_bs);
+        regressor(p,d_filename,csv_has_header,f_filename,n_iter,use_bs,logging);
     }
     if(vm["testonly"].as<bool>() && (i_filename!="")){
-        predict_test(p,d_filename,csv_has_header,i_filename,p_filename);
+        predict_test(p,d_filename,csv_has_header,i_filename,p_filename,logging);
     }
 
 

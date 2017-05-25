@@ -75,7 +75,7 @@ struct Treport_detail{
 
 class Ttrees{
     public:
-        Ttrees(const Ttrees_parameters p,int seed=-1);
+        Ttrees(const Ttrees_parameters p,const LOG logging=LOG::INFO,int seed=-1);
 
         void fit(const txy &xy,Treport_detail *rd=nullptr);
 
@@ -99,7 +99,9 @@ class Ttrees{
         Ttree mut_(const Ttree &tree0);
         void mut();
 
+
         Ttrees_parameters p;
+        LOG logging;
 
         std::vector<std::unique_ptr<Ttree>> trees;
         std::map<size_t,int> ind_cnt;

@@ -18,14 +18,20 @@ struct Ttree_parameters{
         max_depth(2),
         element_function_probability(0.85),
         terminal_const_probability(0.2),
-        logit(false)
+        logit(false),
+        consts_min(-10),
+        consts_max(10),
+        consts_n(20)
     {}
     Ttree_parameters(const Ttree_parameters &src):
         ndim(src.ndim),
         max_depth(src.max_depth),
         element_function_probability(src.element_function_probability),
         terminal_const_probability(src.terminal_const_probability),
-        logit(src.logit)
+        logit(src.logit),
+        consts_min(src.consts_min),
+        consts_max(src.consts_max),
+        consts_n(src.consts_n)
     {}
     void print_all(){
         pr("ndim =",ndim);
@@ -33,6 +39,9 @@ struct Ttree_parameters{
         pr("element_function_probability =",element_function_probability);
         pr("terminal_const_probability =",terminal_const_probability);
         pr("logit =",logit);
+        pr("consts_min=",consts_min);
+        pr("consts_max=",consts_max);
+        pr("consts_n=",consts_n);
     }
 
     int ndim;
@@ -40,18 +49,20 @@ struct Ttree_parameters{
     double element_function_probability;
     double terminal_const_probability;
     bool logit;
+    double consts_min,consts_max;
+    int consts_n;
 };
 
 class Ttree{
     public:
         friend class Tel;
-        Ttree(const int ndim);
+        Ttree(const Ttree_parameters * const p_=nullptr);
         Ttree(const Ttree_parameters &p,const std::function<double(const std::vector<double>&, 
                 const std::vector<double>&)> &J=nullptr);
         Ttree(const Ttree &src, const int cpoint=-1);
         Ttree(const std::string &s, const Ttree_parameters * const p_=nullptr);
 
-        void update_ndim(const int ndim);
+        void update_ndim(const Ttree_parameters &p);
 
         void assign_els(const std::shared_ptr<Tel> &root_src, std::shared_ptr<Tel> &root_dest);
         void replace(const int cpoint, const Ttree &src);
@@ -81,7 +92,7 @@ class Ttree{
         double err;
         int use_count;
 
-        static std::vector<double> consts;
+        std::vector<double> consts;
 
         std::uniform_real_distribution<double> urd;
         std::unique_ptr<std::uniform_int_distribution<int>> p_uid_term;

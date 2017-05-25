@@ -12,7 +12,6 @@
 //using namespace std::chrono;
 
 
-std::vector<double> Ttree::consts;
 std::vector<std::shared_ptr<Tfunc_base>> Ttree::funcs;
 std::vector<std::shared_ptr<Tfunc_base>> Ttree::funcs_l;
 bool Ttree::static_up_to_date = false;
@@ -70,22 +69,23 @@ void Ttree::init_static(){
     funcs_l.push_back(std::make_shared<Tfunc_list2>());
 
 
-    consts.clear();
-    const int nc = 20;
-    for(int i=0;i<nc;++i){
-        double v = i*1.0/nc*20-10;
-        consts.push_back(v);
-    }
 
     static_up_to_date=true;
 }
 
-void Ttree::update_ndim(const int ndim){
+void Ttree::update_ndim(const Ttree_parameters &p){
 
     if(!static_up_to_date)
         init_static();
 
-    x.resize(ndim);
+    this->p = p;
+
+    consts.clear();
+    double c_range = p.consts_max-p.consts_min;
+    for(int i=0;i<p.consts_n;++i){
+        double v = i*1./(p.consts_n-1)*c_range-p.consts_min;
+        consts.push_back(v);
+    }
 
     terms.clear();
 
@@ -99,28 +99,35 @@ void Ttree::update_ndim(const int ndim){
         
         terms.push_back(std::make_pair(&c,cs));
     }
+
+    x.resize(p.ndim);
     for(size_t i=0;i<x.size();++i){
         terms.push_back(std::make_pair(&x[i],"x["+std::to_string(i)+"]"));
     }
 
     p_uid_term_c.reset(new std::uniform_int_distribution<int>(0,consts.size()-1));
-    p_uid_term_v.reset(new std::uniform_int_distribution<int>(consts.size(),consts.size()+ndim-1));
-    p_uid_term.reset(new std::uniform_int_distribution<int>(0,consts.size()+ndim-1));
+    p_uid_term_v.reset(new std::uniform_int_distribution<int>(consts.size(),consts.size()+p.ndim-1));
+    p_uid_term.reset(new std::uniform_int_distribution<int>(0,consts.size()+p.ndim-1));
     p_uid_func.reset(new std::uniform_int_distribution<int>(0,funcs.size()-1));
 }
 
-Ttree::Ttree(const int ndim):
+Ttree::Ttree(const Ttree_parameters * const p_):
     err(-1),use_count(0),urd(0,1),J_(J_default)
 {
-    update_ndim(ndim);
+    if(p_!=nullptr){
+        update_ndim(*p_);
+    }
+    else{
+        Ttree_parameters p;
+        update_ndim(p);
+    }
 }
 
 
 Ttree::Ttree(const Ttree_parameters &p,
         const std::function<double(const std::vector<double>&,const std::vector<double>&)> &J):
-    Ttree(p.ndim)
+    Ttree(&p)
 {
-    this->p=p;
     if(J!=nullptr){
         if(p.logit)
             this->J_ = J_logit;
@@ -147,10 +154,8 @@ Ttree::Ttree(const Ttree_parameters &p,
 }
 
 Ttree::Ttree(const Ttree &src, const int cpoint):
-    Ttree(src.p.ndim)
+    Ttree(&src.p)
 {
-    p = src.p;
-
     J_ = src.J_;
 
     root = std::make_shared<Tel>(0,std::weak_ptr<Tel>(),this);
@@ -190,11 +195,8 @@ Ttree::Ttree(const Ttree &src, const int cpoint):
 
 
 Ttree::Ttree(const std::string &s, const Ttree_parameters * const p_):
-    Ttree(0)
+    Ttree(p_)
 {
-    if(p_!=nullptr){
-        this->p=*p_;
-    }
 
     std::string s_ = reduce_br(s);
     //pr("\ninitial ->",s_);
@@ -290,7 +292,9 @@ Ttree::Ttree(const std::string &s, const Ttree_parameters * const p_):
     if(p.ndim>10000)
         throw xX_0("Ttree(s): ndim too high="+std::to_string(p.ndim));
 
-    update_ndim(p.ndim);
+    if(p_==nullptr){
+        update_ndim(p);
+    }
 
     for(auto &el:els){
         if(el->type==1){ // function
@@ -322,10 +326,9 @@ Ttree::Ttree(const std::string &s, const Ttree_parameters * const p_):
             el->term = terms[el->value_ind];
         }
     }
-    
-
-
 }
+
+
 void Ttree::assign_els(const std::shared_ptr<Tel> &root_src, std::shared_ptr<Tel> &root_dest){
 
     int depth = root_dest->depth;

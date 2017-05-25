@@ -12,8 +12,8 @@ std::default_random_engine dre;
 
 
 
-Ttrees::Ttrees(const Ttrees_parameters p,int seed):
-    p(p), num_of_co(0),min_err(1e10),urd(0,1),xy(xy_default_initializer)
+Ttrees::Ttrees(const Ttrees_parameters p,const LOG logging,int seed):
+    p(p),logging(logging),num_of_co(0),min_err(1e10),urd(0,1),xy(xy_default_initializer)
 {
     if(seed>=0)
         dre.seed(seed);
@@ -55,7 +55,7 @@ void Ttrees::fit(const txy &xy, Treport_detail *rd){
             break;
 
 
-        if(p.ngen_max>1){
+        if(logging>LOG::SILENT && p.ngen_max>1){
             /* decoration of the progress report */
             double pf_ = 100./(p.ngen_max-1);
             int perc = gen*pf_;
