@@ -36,8 +36,9 @@ struct Ttrees_parameters{
         pr("ratio_ss =",ratio_ss);
         p.print_all();
     }
-    void save(const std::string &filename){
+    void save(const bool is_bin,const std::string &filename){
         std::ofstream(filename,std::ios::out|std::ios::binary)<< 
+            is_bin << std::endl <<
             ntrees << std::endl <<
             max_depth_ex << std::endl <<
             ngen_max << std::endl <<
@@ -54,8 +55,9 @@ struct Ttrees_parameters{
             p.consts_n << std::endl <<
             p.loss_type;
     }
-    void load(const std::string &filename){
+    void load(const std::string &filename, bool &is_bin){
         std::ifstream(filename,std::ios::in)>> 
+            is_bin >>
             ntrees >> 
             max_depth_ex >> 
             ngen_max >> 

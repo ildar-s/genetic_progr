@@ -104,9 +104,6 @@ class Ttree{
         std::unique_ptr<std::uniform_int_distribution<int>> p_uid_func;
 
 
-        static double J_squared(const std::vector<double> &y0,const std::vector<double> &y1);
-        static double J_logit(const std::vector<double> &y_true,const std::vector<double> &y_pred);
-
         static std::map<size_t,size_t> match_br(const std::string &s);
         static std::string reduce_br(const std::string &s);
         static std::map<size_t,size_t> split_m(const std::string &s,const std::string &sep);

@@ -187,12 +187,16 @@ txyss get_bs_xy(const txy &xy){
 }
 
 
-tvd predict_c_bin(std::vector<Ttree> &ts, const tvvd &X){
+tvd predict_c(std::vector<Ttree> &ts, const tvvd &X, const bool is_bin){
 
     tvd y_pred(X.size());
 
     for(auto &t: ts){
-        tvd y_pred0 = t.predict_bin(X);
+        tvd y_pred0;
+        if(is_bin)
+            y_pred0 = t.predict_bin(X);
+        else
+            y_pred0 = t.predict(X);
 
         auto it_y0 = y_pred0.begin();
         auto it_y = y_pred.begin();
@@ -200,11 +204,18 @@ tvd predict_c_bin(std::vector<Ttree> &ts, const tvvd &X){
             *it_y += *it_y0;
         }
     }
-    for(auto &y:y_pred){
-        if(y<0)
-            y=-1;
-        else
-            y=1;
+
+    if(is_bin){
+        for(auto &y:y_pred){
+            if(y<0)
+                y=-1;
+            else
+                y=1;
+        }
+    }
+    else{
+        const size_t n = ts.size();
+        for(auto &y:y_pred) y /= n;
     }
 
     return y_pred;
@@ -226,7 +237,7 @@ void fit(const txy &xy_train, Ttrees_parameters &p, const bool is_bin,
     tvd bx(xy_train.first.size());
 
     std::ofstream(f_file_name,std::ios::out|std::ios::binary);
-    p.save(f_file_name+".p");
+    p.save(is_bin,f_file_name+".p");
 
     for(int iter=0;iter<n_iter;++iter){
         if(logging > LOG::SILENT && n_iter>1){
@@ -360,14 +371,14 @@ void regressor(Ttrees_parameters &p, const std::string &d_filename,
     }
 
     fit(xy, p, is_bin, use_bs, n_iter, f_filename,logging);
-
 }
 
 void predict_test(Ttrees_parameters &p, const std::string &d_filename, 
         const bool csv_has_header, const std::string &i_filename,
         const std::string &p_filename,const LOG logging=LOG::INFO){
 
-    p.load(i_filename+".p");
+    bool is_bin;
+    p.load(i_filename+".p",is_bin);
 
     std::ifstream file(i_filename,std::ios::in);
 
@@ -385,8 +396,8 @@ void predict_test(Ttrees_parameters &p, const std::string &d_filename,
     bool tmp_;
     txy xy = read_xy(tmp_,d_filename,false,csv_has_header);
     tvvd &X_test = xy.first;
-    tvd y_pred = predict_c_bin(ts,X_test);
 
+    tvd y_pred = predict_c(ts,X_test,is_bin);
 
     if(p_filename.size()){
         std::ofstream file(p_filename,std::ios::out|std::ios::binary);
@@ -440,7 +451,6 @@ class targ_key: public base_targ_key {
 
 
 int main(int argc, char** argv){
-
     
     Ttrees_parameters p;
     p.p.logit=true;
@@ -598,11 +608,12 @@ int main(int argc, char** argv){
     for(auto &k : arg_keys){
         k->fill_p(&vm);
     }
-    if(arg_loss_function=="squared"){
-        p.p.loss_type = 0;
+    if( (arg_loss_function=="logistic")||(arg_loss_function=="log")||
+            (arg_loss_function=="logit")  ){
+        p.p.loss_type = 1;
     }
     else{
-        p.p.loss_type = 1;
+        p.p.loss_type = 0;
     }
 
 
@@ -644,7 +655,6 @@ int main(int argc, char** argv){
     dre.seed(i_seed);
 
 
-
     try{
         if(vm["random_tree_demo"].as<bool>()){
             example_tree_viz(p);
@@ -659,6 +669,12 @@ int main(int argc, char** argv){
     }
     catch(...){
         return 1;
+    }
+
+
+    if(logging == LOG::DEBUG){
+        pr("\nGP parameters used:");
+        p.print_all();
     }
 
 
