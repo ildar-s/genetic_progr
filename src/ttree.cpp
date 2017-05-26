@@ -1,53 +1,24 @@
 #include "ttree.h"
+#include "metrics.h"
 #include "common_0.h"
 
 #include <map>
 #include <set>
 #include <stack>
 #include <algorithm>
-//#include <thread>
 
 
-//#include <chrono>
-//using namespace std::chrono;
+
 
 
 std::vector<std::shared_ptr<Tfunc_base>> Ttree::funcs;
 std::vector<std::shared_ptr<Tfunc_base>> Ttree::funcs_l;
 bool Ttree::static_up_to_date = false;
 
-//std::uniform_real_distribution<double> Ttree::urd(0,1);
-//std::unique_ptr<std::uniform_int_distribution<int>> Ttree::p_uid_term;
-//std::unique_ptr<std::uniform_int_distribution<int>> Ttree::p_uid_term_c;
-//std::unique_ptr<std::uniform_int_distribution<int>> Ttree::p_uid_term_v;
-//std::unique_ptr<std::uniform_int_distribution<int>> Ttree::p_uid_func;
-//int Ttree::ndim_st = -1;
 
 
 
-double Ttree::J_default(const std::vector<double> &y0,const std::vector<double> &y1){
-    assert(y0.size()==y1.size());
-    double s=0;
-    for(size_t i=0;i<y0.size();++i){
-        double z_ = y0.at(i)-y1.at(i);
-        s += z_*z_;
-    }
-    return s;
-}
 
-// y_true must be {-1,1}
-double Ttree::J_logit(const std::vector<double> &y_true,const std::vector<double> &y_pred){
-    assert(y_true.size()==y_pred.size());
-
-    double s=0;
-    for(size_t i=0;i<y_true.size();++i){
-
-        double z_ = y_true.at(i) * y_pred.at(i);
-
-        s += std::log(1+std::exp(-z_));
-    }
-    return s;
-}
 
 void Ttree::init_static(){
     funcs.clear();
@@ -112,7 +83,7 @@ void Ttree::update_ndim(const Ttree_parameters &p){
 }
 
 Ttree::Ttree(const Ttree_parameters * const p_):
-    err(-1),use_count(0),urd(0,1),J_(J_default)
+    err(-1),use_count(0),urd(0,1)
 {
     if(p_!=nullptr){
         update_ndim(*p_);
@@ -124,16 +95,9 @@ Ttree::Ttree(const Ttree_parameters * const p_):
 }
 
 
-Ttree::Ttree(const Ttree_parameters &p,
-        const std::function<double(const std::vector<double>&,const std::vector<double>&)> &J):
+Ttree::Ttree(const Ttree_parameters &p):
     Ttree(&p)
 {
-    if(J!=nullptr){
-        if(p.logit)
-            this->J_ = J_logit;
-        else
-            this->J_ = J;
-    }
 
     root = std::make_shared<Tel>(0,std::weak_ptr<Tel>(),this);
 
@@ -156,8 +120,6 @@ Ttree::Ttree(const Ttree_parameters &p,
 Ttree::Ttree(const Ttree &src, const int cpoint):
     Ttree(&src.p)
 {
-    J_ = src.J_;
-
     root = std::make_shared<Tel>(0,std::weak_ptr<Tel>(),this);
 
     const std::shared_ptr<Tel> &root_src = src.root;
@@ -910,9 +872,8 @@ std::vector<double> Ttree::predict(const tvvd &X){
 }
 
 void Ttree::eval_v(const txy &xy){
-
     std::vector<double> y_pred = predict(xy.first);
-    err = J_(xy.second,y_pred);
+    err = metrics::J(p.loss_type,xy.second,y_pred);
 }
 
 

@@ -1,4 +1,5 @@
 #include "tfunc.h"
+#include "metrics.h"
 #include "ttree.h"
 #include "ttrees.h"
 #include "common_0.h"
@@ -43,7 +44,7 @@ system_clock::time_point make_time_point(int day,int mon,
 
 
 /* must be csv file, sep=',', first column always ignored  */
-txy read_xy(const std::string &filename, const bool has_y,
+txy read_xy(bool &is_bin, const std::string &filename, const bool has_y,
         const bool has_header=true, std::vector<std::string> *columns=nullptr){
 
     Tpd pd;
@@ -56,7 +57,10 @@ txy read_xy(const std::string &filename, const bool has_y,
                 throw xX_0("bad size of data array while reading <"+filename+">");
         }
     }
-    catch(std::exception &e){pr(e.what());return xy;}
+    catch(const std::exception &e){
+        throw xX_0("read_csv failed");
+    }
+
 
     if(columns!=nullptr)
         *columns = pd.columns;
@@ -73,6 +77,29 @@ txy read_xy(const std::string &filename, const bool has_y,
         for(size_t i=0;i<X.size();++i){
             y[i] = pd.data[i].back();
             X[i].assign(pd.data[i].begin()+1,pd.data[i].end()-1);
+        }
+
+
+
+        std::set<double> y_unique(y.begin(),y.end());
+        if(y_unique.size()==2){
+            is_bin=true;
+            if(y_unique!=std::set<double>{-1,1}){
+
+                double y0 = *y_unique.begin();
+
+                for(auto &t : y){
+                    if(t==y0){
+                        t=-1;
+                    }
+                    else{
+                        t=1;
+                    }
+                }
+            }
+        }
+        else{
+            is_bin=false;
         }
     }
     else{
@@ -97,8 +124,8 @@ void to_csv(const txy &xy, const std::string &filename,
 
     if(columns!=nullptr){
         std::ostream_iterator<std::string> it{file,","};
-        std::copy(columns->begin(),columns->end(),it);
-        file<<"LabelPredicted"<<std::endl;
+        std::copy(columns->begin(),columns->end()-1,it);
+        file<<columns->back()<<std::endl;
     }
 
     std::ostream_iterator<double> it{file,","};
@@ -159,15 +186,6 @@ txyss get_bs_xy(const txy &xy){
     return xyss;
 }
 
-double accuracy(const tvd &y_true, const tvd &y_pred){
-    int s = 0;
-    size_t n = y_true.size();
-    for(size_t i=0;i<n;++i){
-        s += static_cast<int>(y_true[i]==y_pred[i]);
-    }
-
-    return s*1.0/n;
-}
 
 tvd predict_c_bin(std::vector<Ttree> &ts, const tvvd &X){
 
@@ -193,106 +211,10 @@ tvd predict_c_bin(std::vector<Ttree> &ts, const tvvd &X){
 }
 
 
-void fit_with_bs(const txy &xy_train, Ttrees_parameters &p, const int bs_iterations,
-        const std::string f_file_name, const LOG logging=LOG::INFO){
-
-    Treport_detail rd;
-
-    p.p.ndim = xy_train.first[0].size();
-
-    std::vector<Ttree> best_trees;
-
-    /* oob prediction will be accumulated here */
-    tvd bx(xy_train.first.size());
-
-    std::ofstream(f_file_name,std::ios::out|std::ios::binary);
-    p.save(f_file_name+".p");
-
-    for(int i=0;i<bs_iterations;++i){
-        if(logging > LOG::SILENT){
-            pr("\niteration no",i);
-        }
-       
-        /* sampling with bootstrap (bs) */
-        txyss xyss = get_bs_xy(xy_train);
-        txy &xy_bs = std::get<0>(xyss);
-        std::set<size_t> &ss_no = std::get<2>(xyss);
-
-        /* init new forest */
-        Ttrees trs(p,logging);
-
-        /* fitting on the bs-subsample */
-        trs.fit(xy_bs,&rd);
-
-        if(logging > LOG::SILENT){
-            pr_("* min err=",rd.min_err);
-            pr_("fitting time=",rd.dur);
-            pr_("number of cross-overs =",rd.num_of_co);
-        }
-
-        /* collecting best trees */
-        Ttree t_best = trs.best_tree();
-        best_trees.push_back(t_best);
-
-        std::ofstream(f_file_name,std::ios::app|std::ios::out|std::ios::binary)<<
-            t_best.to_string()<<std::endl;
-
-
-        /*  Steps below are for monitoring of the current quality */
-
-
-        /* 0) Gathering the oob subsample */
-        txy xy_test0;
-        if(logging > LOG::SILENT){
-            for(const auto i: ss_no){
-                xy_test0.first.push_back(xy_train.first[i]);
-                xy_test0.second.push_back(xy_train.second[i]);
-            }
-        }
-
-
-        /* 1) Quality of the last best_tree on the oob subsample: */
-        tvd y_pred;
-        if(logging > LOG::SILENT){
-            y_pred = t_best.predict_bin(xy_test0.first);
-            double acc = accuracy(xy_test0.second,y_pred);
-
-            if(logging > LOG::SILENT){
-                pr("acc_oob(last best_tree) =",acc);
-            }
-        }
-
-
-        /* 2) Quality of the ensemble of best_tree-s so far */
-        /*    each best_tree only predicts within its oob subsample, but over time, 
-         *    the entire sample range [0..bx.size) becomes populated */
-
-        if(logging > LOG::SILENT){
-            /* accumulating prediction: current best_tree predicts within its oob range */
-            auto it_ss = ss_no.begin();
-            auto it_y = y_pred.begin();
-            for(;it_ss!=ss_no.end();++it_ss,++it_y){
-                size_t i = *it_ss;
-                bx[i] += *it_y;
-            }
-
-            /* binary view of the cumulative prediction so far */
-            tvd bx_b = bx;
-            for(auto &t:bx_b) 
-                t = t<0 ? -1 : 1;
-
-            /* quality of the ensemble so far through comparison of accumulated bx with y_train */
-            double acc = accuracy(xy_train.second,bx_b);
-            pr("acc_oob(ensemble) =",acc);
-        }
-
-
-    }
-}
-
-void fit(const txy &xy_train, Ttrees_parameters &p, const int n_iter,
-        const std::string f_file_name, const LOG logging=LOG::INFO){
-
+void fit(const txy &xy_train, Ttrees_parameters &p, const bool is_bin,
+        const bool use_bs,
+        const int n_iter, const std::string f_file_name, 
+        const LOG logging=LOG::INFO){
 
     Treport_detail rd;
 
@@ -306,16 +228,31 @@ void fit(const txy &xy_train, Ttrees_parameters &p, const int n_iter,
     std::ofstream(f_file_name,std::ios::out|std::ios::binary);
     p.save(f_file_name+".p");
 
-    for(int i=0;i<n_iter;++i){
+    for(int iter=0;iter<n_iter;++iter){
         if(logging > LOG::SILENT && n_iter>1){
-            pr("\niteration no",i);
+            pr("\niteration no",iter);
         }
-       
+
+
+
         /* init new forest */
         Ttrees trs(p,logging);
 
-        /* fitting on bs-subsample */
-        trs.fit(xy_train,&rd);
+
+        /* tuple for holding bootstrapped xy data and oob indices */
+        txyss xyss;
+
+        /* fitting on either bs subsample or full xy_train */
+        if(use_bs){
+            txyss xyss = get_bs_xy(xy_train);
+            txy &xy_train_bs = std::get<0>(xyss);
+
+            trs.fit(xy_train_bs,&rd);
+        }
+        else{
+            trs.fit(xy_train,&rd);
+        }
+
 
         if(logging > LOG::SILENT){
             pr("* min err =",rd.min_err);
@@ -331,32 +268,78 @@ void fit(const txy &xy_train, Ttrees_parameters &p, const int n_iter,
             t_best.to_string()<<std::endl;
 
 
-        tvd y_pred;
-        /* Quality of the last best_tree: */
-        if(logging > LOG::SILENT){
-            y_pred = t_best.predict_bin(xy_train.first);
-            double acc = accuracy(xy_train.second,y_pred);
+        /*  Steps below are for monitoring of the current quality */
 
-            if(logging > LOG::SILENT){
-                pr("acc(best_tree) =",acc);
+
+        std::set<size_t> oob_inds;
+
+        if(logging > LOG::SILENT){
+            if(use_bs){
+                oob_inds = std::get<2>(xyss);
+            }
+            else{
+                for(size_t i=0;i<bx.size();++i) oob_inds.insert(i);
+            }
+        }
+
+
+
+        /* 0) Gathering the oob subsample */
+        txy xy_test0;
+        if(logging > LOG::SILENT){
+            for(const auto i: oob_inds){
+                xy_test0.first.push_back(xy_train.first[i]);
+                xy_test0.second.push_back(xy_train.second[i]);
+            }
+        }
+
+
+        /* 1) Quality of the last best_tree: */
+        tvd y_pred;
+        if(logging > LOG::SILENT){
+            if(is_bin){
+                y_pred = t_best.predict_bin(xy_test0.first);
+                double acc = metrics::accuracy(xy_test0.second,y_pred);
+                pr("acc_oob(last best_tree) =",acc);
+            }
+            else{
+                y_pred = t_best.predict(xy_test0.first);
+                double err = metrics::J(p.p.loss_type,xy_test0.second,y_pred);
+                pr("err(last best_tree) =",err);
             }
         }
 
 
         /* 2) Quality of the ensemble of best_tree-s so far */
-        if(logging > LOG::SILENT){
-            for(size_t i=0;i<bx.size();++i){
-                bx[i]+=y_pred[i];
+        /*    each best_tree only predicts within its oob subsample, but over time, 
+         *    the entire sample range [0..bx.size) becomes populated */
+        if(logging > LOG::SILENT && n_iter>1){
+            /* accumulating prediction: 
+             * current best_tree predicts within its oob range (or full range is no bs used) */
+            auto it_ind = oob_inds.begin();
+            auto it_y = y_pred.begin();
+            for(;it_ind!=oob_inds.end();++it_ind,++it_y){
+                size_t i = *it_ind;
+                bx[i] += *it_y;
             }
 
-            /* binary view of the cumulative prediction so far */
-            tvd bx_b = bx;
-            for(auto &t:bx_b) 
-                t = t<0 ? -1 : 1;
+            /* quality of the ensemble so far  */
+            if(is_bin){
+                /* binary view of the cumulative prediction so far */
+                tvd bx_b = bx;
+                for(auto &t:bx_b) t = t<0 ? -1 : 1;
 
-            /* quality of the ensemble so far */
-            double acc = accuracy(xy_train.second,bx_b);
-            pr("acc(ensemble) =",acc);
+                double acc = metrics::accuracy(xy_train.second,bx_b);
+                pr("acc_oob(ensemble) =",acc);
+            }
+            else{
+                /*  bx  ->  bx average*/
+                tvd bx_n = bx;
+                for(auto &t : bx_n) t /= (iter+1);
+
+                double err = metrics::J(p.p.loss_type,xy_test0.second,bx_n);
+                pr("err(last best_tree) =",err);
+            }
         }
 
 
@@ -367,14 +350,16 @@ void regressor(Ttrees_parameters &p, const std::string &d_filename,
         const bool csv_has_header, const std::string &f_filename,
         const int n_iter, const bool use_bs, const LOG logging=LOG::INFO){
     
-    txy xy = read_xy(d_filename,true,csv_has_header);
+    txy xy;
+    bool is_bin;
+    try{
+        xy = read_xy(is_bin,d_filename,true,csv_has_header);
+    }
+    catch(const std::exception &e){
+        return;
+    }
 
-    if(use_bs){
-        fit_with_bs(xy, p, n_iter, f_filename,logging);
-    }
-    else{
-        fit(xy, p, n_iter,f_filename,logging);
-    }
+    fit(xy, p, is_bin, use_bs, n_iter, f_filename,logging);
 
 }
 
@@ -397,18 +382,16 @@ void predict_test(Ttrees_parameters &p, const std::string &d_filename,
         ts.push_back(tree_);
     }
 
-    std::vector<std::string> columns;
-    txy xy = read_xy(d_filename,false,csv_has_header,&columns);
+    bool tmp_;
+    txy xy = read_xy(tmp_,d_filename,false,csv_has_header);
     tvvd &X_test = xy.first;
     tvd y_pred = predict_c_bin(ts,X_test);
 
-    xy.second.assign(y_pred.begin(),y_pred.end());
 
     if(p_filename.size()){
-        if(csv_has_header)
-            to_csv(xy,p_filename,&columns);
-        else
-            to_csv(xy,p_filename);
+        std::ofstream file(p_filename,std::ios::out|std::ios::binary);
+        std::ostream_iterator<double> it{file,"\n"};
+        std::copy(y_pred.begin(),y_pred.end(),it);
     }
 }
 
@@ -528,6 +511,12 @@ int main(int argc, char** argv){
          "number of different terminal constants",&p.p.consts_n)
             );
 
+    std::string arg_loss_function;
+    arg_keys.push_back(std::make_unique<targ_key<std::string>>("loss_function",
+            po::value<std::string>()->default_value("squared"),
+            "loss function type, supported types: squared and logistic",&arg_loss_function)
+            );
+
     po::options_description desc_gp("Parameters of GP algorithm");
 
     for(auto &k : arg_keys){
@@ -609,6 +598,12 @@ int main(int argc, char** argv){
     for(auto &k : arg_keys){
         k->fill_p(&vm);
     }
+    if(arg_loss_function=="squared"){
+        p.p.loss_type = 0;
+    }
+    else{
+        p.p.loss_type = 1;
+    }
 
 
     std::string d_filename,f_filename,i_filename,p_filename;
@@ -650,15 +645,20 @@ int main(int argc, char** argv){
 
 
 
-    if(vm["random_tree_demo"].as<bool>()){
-        example_tree_viz(p);
-        return 0;
+    try{
+        if(vm["random_tree_demo"].as<bool>()){
+            example_tree_viz(p);
+            return 0;
+        }
+        if(vm.count("final_regressor")){
+            regressor(p,d_filename,csv_has_header,f_filename,n_iter,use_bs,logging);
+        }
+        if(vm["testonly"].as<bool>() && (i_filename!="")){
+            predict_test(p,d_filename,csv_has_header,i_filename,p_filename,logging);
+        }
     }
-    if(vm.count("final_regressor")){
-        regressor(p,d_filename,csv_has_header,f_filename,n_iter,use_bs,logging);
-    }
-    if(vm["testonly"].as<bool>() && (i_filename!="")){
-        predict_test(p,d_filename,csv_has_header,i_filename,p_filename,logging);
+    catch(...){
+        return 1;
     }
 
 

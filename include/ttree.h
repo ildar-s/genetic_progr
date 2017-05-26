@@ -21,7 +21,8 @@ struct Ttree_parameters{
         logit(false),
         consts_min(-10),
         consts_max(10),
-        consts_n(20)
+        consts_n(20),
+        loss_type(0)
     {}
     Ttree_parameters(const Ttree_parameters &src):
         ndim(src.ndim),
@@ -31,7 +32,8 @@ struct Ttree_parameters{
         logit(src.logit),
         consts_min(src.consts_min),
         consts_max(src.consts_max),
-        consts_n(src.consts_n)
+        consts_n(src.consts_n),
+        loss_type(src.loss_type)
     {}
     void print_all(){
         pr("ndim =",ndim);
@@ -42,6 +44,7 @@ struct Ttree_parameters{
         pr("consts_min=",consts_min);
         pr("consts_max=",consts_max);
         pr("consts_n=",consts_n);
+        pr("loss_type=",loss_type);
     }
 
     int ndim;
@@ -51,14 +54,14 @@ struct Ttree_parameters{
     bool logit;
     double consts_min,consts_max;
     int consts_n;
+    int loss_type;
 };
 
 class Ttree{
     public:
         friend class Tel;
         Ttree(const Ttree_parameters * const p_=nullptr);
-        Ttree(const Ttree_parameters &p,const std::function<double(const std::vector<double>&, 
-                const std::vector<double>&)> &J=nullptr);
+        Ttree(const Ttree_parameters &p);
         Ttree(const Ttree &src, const int cpoint=-1);
         Ttree(const std::string &s, const Ttree_parameters * const p_=nullptr);
 
@@ -101,7 +104,7 @@ class Ttree{
         std::unique_ptr<std::uniform_int_distribution<int>> p_uid_func;
 
 
-        static double J_default(const std::vector<double> &y0,const std::vector<double> &y1);
+        static double J_squared(const std::vector<double> &y0,const std::vector<double> &y1);
         static double J_logit(const std::vector<double> &y_true,const std::vector<double> &y_pred);
 
         static std::map<size_t,size_t> match_br(const std::string &s);
@@ -126,9 +129,6 @@ class Ttree{
 
         std::vector<double> x;
         std::vector<std::pair<double*,std::string>> terms;
-
-        //static int ndim_st;
-        std::function<double(const std::vector<double>&, const std::vector<double>&)> J_;
 };
 
 #endif /* TTREE_H_ */

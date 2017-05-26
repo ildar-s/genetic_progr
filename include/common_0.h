@@ -34,7 +34,7 @@ void pr_(const T& firstArg, const Types&... args){
     std::cout << firstArg;
     pr_(args...);
 }
-class xX_0{
+class xX_0 : public std::exception {
     public:
         xX_0(const std::string &msg){ pr("ERROR: ",msg);}
 };

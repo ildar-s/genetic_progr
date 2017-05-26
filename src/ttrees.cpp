@@ -37,7 +37,7 @@ void Ttrees::fit(const txy &xy, Treport_detail *rd){
     errs.reserve(p.ngen_max);
 
 
-    pr("");
+    if(logging>LOG::SILENT) pr("");
     for(int gen=0;gen<p.ngen_max;++gen){
 
         /* perform cross-over operation with 95% chance */
@@ -64,7 +64,7 @@ void Ttrees::fit(const txy &xy, Treport_detail *rd){
             std::cout.flush();
         }
     }
-    pr("");
+    if(logging>LOG::SILENT) pr("");
 
     auto dur = duration_cast<milliseconds>(system_clock::now()-tp0);
     double dur_s = dur.count()/1000.0;
@@ -237,14 +237,14 @@ void Ttrees::co(int &num_of_co){
     std::unordered_set<size_t> excl;
     std::vector<size_t> ii = get_sorted_subset(excl);
     if(ii.size()<1)
-        throw xX_0("co: get_sorted_subset, first time");
+        throw xX_0("co: get_sorted_subset resulted in empty list, try increasing \"ratio_ss\"");
 
     size_t i0 = ii[0];
 
     excl.insert(i0);
     ii = get_sorted_subset(excl);
     if(ii.size()<1)
-        throw xX_0("co: get_sorted_subset, second time");
+        throw xX_0("co: get_sorted_subset resulted in empty list, try increasing \"ratio_ss\"");
 
     size_t i1 = ii[0];
 

@@ -51,11 +51,9 @@ void Tpd::read_csv(const std::string &filename,
         const bool has_header){
 
     std::ifstream file(filename,std::ios::in);
-    if(!file){
-        pr(std::system("ls -l >_tmp_output_of_ls"));
-        std::cout << std::ifstream("_tmp_output_of_ls").rdbuf();
+    if(!file)
         throw xX_0("reading \""+filename+"\" failed");
-    }
+    
     
 
     int nc;
