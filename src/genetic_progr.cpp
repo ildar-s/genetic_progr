@@ -45,7 +45,8 @@ system_clock::time_point make_time_point(int day,int mon,
 
 /* must be csv file, sep=',', first column always ignored  */
 txy read_xy(bool &is_bin, const std::string &filename, const bool has_y,
-        const bool has_header=true, std::vector<std::string> *columns=nullptr){
+        const bool has_header=true, const LOG logging=LOG::INFO,
+        std::vector<std::string> *columns=nullptr){
 
     Tpd pd;
     txy xy;
@@ -84,6 +85,12 @@ txy read_xy(bool &is_bin, const std::string &filename, const bool has_y,
         std::set<double> y_unique(y.begin(),y.end());
         if(y_unique.size()==2){
             is_bin=true;
+
+            if(logging==LOG::DEBUG){
+                std::cout<<"--> labels in input data: ";
+                for(const auto &t: y_unique)std::cout<<t<<" ";
+            }
+
             if(y_unique!=std::set<double>{-1,1}){
 
                 double y0 = *y_unique.begin();
@@ -97,6 +104,13 @@ txy read_xy(bool &is_bin, const std::string &filename, const bool has_y,
                     }
                 }
             }
+
+            if(logging==LOG::DEBUG){
+                std::cout<<";  finally using labels: ";
+                for(const auto &t: std::set<double>(y.begin(),y.end())) std::cout<<t<<" ";
+                pr("");
+            }
+
         }
         else{
             is_bin=false;
@@ -183,6 +197,7 @@ txyss get_bs_xy(const txy &xy){
     std::set_difference(v_all.begin(),v_all.end(),ss_yes.begin(),ss_yes.end(),
             std::inserter(ss_no,ss_no.begin()));
 
+
     return xyss;
 }
 
@@ -255,7 +270,7 @@ void fit(const txy &xy_train, Ttrees_parameters &p, const bool is_bin,
 
         /* fitting on either bs subsample or full xy_train */
         if(use_bs){
-            txyss xyss = get_bs_xy(xy_train);
+            xyss = get_bs_xy(xy_train);
             txy &xy_train_bs = std::get<0>(xyss);
 
             trs.fit(xy_train_bs,&rd);
@@ -364,7 +379,13 @@ void regressor(Ttrees_parameters &p, const std::string &d_filename,
     txy xy;
     bool is_bin;
     try{
-        xy = read_xy(is_bin,d_filename,true,csv_has_header);
+        xy = read_xy(is_bin,d_filename,true,csv_has_header,logging);
+        if(logging == LOG::DEBUG){
+            if(is_bin)
+                pr("--> binary classification");
+            else
+                pr("--> regression");
+        }
     }
     catch(const std::exception &e){
         return;
@@ -379,6 +400,12 @@ void predict_test(Ttrees_parameters &p, const std::string &d_filename,
 
     bool is_bin;
     p.load(i_filename+".p",is_bin);
+    if(logging == LOG::DEBUG){
+        if(is_bin)
+            pr("--> binary classification");
+        else
+            pr("--> regression");
+    }
 
     std::ifstream file(i_filename,std::ios::in);
 
@@ -394,7 +421,7 @@ void predict_test(Ttrees_parameters &p, const std::string &d_filename,
     }
 
     bool tmp_;
-    txy xy = read_xy(tmp_,d_filename,false,csv_has_header);
+    txy xy = read_xy(tmp_,d_filename,false,csv_has_header,logging);
     tvvd &X_test = xy.first;
 
     tvd y_pred = predict_c(ts,X_test,is_bin);
@@ -453,7 +480,6 @@ class targ_key: public base_targ_key {
 int main(int argc, char** argv){
     
     Ttrees_parameters p;
-    p.p.logit=true;
 
     std::vector<std::unique_ptr<base_targ_key>> arg_keys;
 
@@ -637,6 +663,8 @@ int main(int argc, char** argv){
 
     int n_iter = vm["n_iter"].as<int>();
     bool use_bs = vm["bs"].as<bool>();
+
+
 
     std::map<std::string,LOG> lmap{
         {"silent",LOG::SILENT},{"info",LOG::INFO},{"debug",LOG::DEBUG} };

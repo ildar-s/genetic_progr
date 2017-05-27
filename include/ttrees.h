@@ -49,7 +49,6 @@ struct Ttrees_parameters{
             p.max_depth << std::endl <<
             p.element_function_probability << std::endl <<
             p.terminal_const_probability << std::endl <<
-            p.logit << std::endl <<
             p.consts_min << std::endl <<
             p.consts_max << std::endl <<
             p.consts_n << std::endl <<
@@ -68,7 +67,6 @@ struct Ttrees_parameters{
             p.max_depth >> 
             p.element_function_probability >> 
             p.terminal_const_probability >> 
-            p.logit >>
             p.consts_min >>
             p.consts_max >>
             p.consts_n >>

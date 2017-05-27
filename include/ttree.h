@@ -18,7 +18,6 @@ struct Ttree_parameters{
         max_depth(2),
         element_function_probability(0.85),
         terminal_const_probability(0.2),
-        logit(false),
         consts_min(-10),
         consts_max(10),
         consts_n(20),
@@ -29,7 +28,6 @@ struct Ttree_parameters{
         max_depth(src.max_depth),
         element_function_probability(src.element_function_probability),
         terminal_const_probability(src.terminal_const_probability),
-        logit(src.logit),
         consts_min(src.consts_min),
         consts_max(src.consts_max),
         consts_n(src.consts_n),
@@ -40,7 +38,6 @@ struct Ttree_parameters{
         pr("max_depth =",max_depth);
         pr("element_function_probability =",element_function_probability);
         pr("terminal_const_probability =",terminal_const_probability);
-        pr("logit =",logit);
         pr("consts_min=",consts_min);
         pr("consts_max=",consts_max);
         pr("consts_n=",consts_n);
@@ -51,7 +48,6 @@ struct Ttree_parameters{
     int max_depth;
     double element_function_probability;
     double terminal_const_probability;
-    bool logit;
     double consts_min,consts_max;
     int consts_n;
     int loss_type;
@@ -103,11 +99,6 @@ class Ttree{
         std::unique_ptr<std::uniform_int_distribution<int>> p_uid_term_v;
         std::unique_ptr<std::uniform_int_distribution<int>> p_uid_func;
 
-
-        static std::map<size_t,size_t> match_br(const std::string &s);
-        static std::string reduce_br(const std::string &s);
-        static std::map<size_t,size_t> split_m(const std::string &s,const std::string &sep);
-        static std::map<size_t,size_t> top_level_br(const std::map<size_t,size_t> &br);
 
         static std::vector<std::shared_ptr<Tfunc_base>> funcs;
         static std::vector<std::shared_ptr<Tfunc_base>> funcs_l;

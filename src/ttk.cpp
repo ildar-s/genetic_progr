@@ -1,6 +1,7 @@
 #include "ttk.h"
 
 #include "ttree.h"
+#include "brackets.h"
 
 #include <vector>
 #include "common_0.h"
@@ -16,16 +17,16 @@ Ttk::Ttk(const std::string &s, const Tf *ff):
 
     val="unknown";
 
-    std::map<size_t,size_t> m = Ttree::match_br(src);
+    std::map<size_t,size_t> m = brackets::match_br(src);
 
     if(m.size())
     if((m.begin()->first==0) && (m.begin()->second==src.size()-1)){
         src.erase(static_cast<size_t>(0),static_cast<size_t>(1));
         src.pop_back();
-        m = Ttree::match_br(src);
+        m = brackets::match_br(src);
     }
 
-    std::map<size_t,size_t> m_ = Ttree::top_level_br(m);
+    std::map<size_t,size_t> m_ = brackets::top_level_br(m);
 
 
     std::string s_tmp(src);
@@ -45,7 +46,7 @@ Ttk::Ttk(const std::string &s, const Tf *ff):
         std::string sep_ = (*it)->get_value_decor();
         std::string::size_type idx = s_tmp.find(sep_);
         if(idx!=std::string::npos){
-            m_ch = Ttree::split_m(s_tmp,sep_);
+            m_ch = brackets::split_m(s_tmp,sep_);
 
             if(static_cast<int>(m_ch.size())!=(*it)->get_num_args()){
                 m_ch.clear();
@@ -77,7 +78,7 @@ Ttk::Ttk(const std::string &s, const Tf *ff):
                 std::string sep_ = (*it)->get_value_decor();
                 std::string::size_type idx = s_tmp.find(sep_);
                 if(idx!=std::string::npos){
-                    m_ch = Ttree::split_m(s_tmp,sep_);
+                    m_ch = brackets::split_m(s_tmp,sep_);
 
                     if(m_ch.size()!=1){
                         m_ch.clear();
