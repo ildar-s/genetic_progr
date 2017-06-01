@@ -101,12 +101,8 @@ class Ttrees{
         Ttree co_(const Ttree &tree0, const Ttree &tree1);
         int co_and_add_best(const size_t i0, const size_t i1, const bool erase_worst);
         void co(int &num_of_co);
-        void co_full_elite_sel();
-        void co_full_rand_sel();
-        void co_rand_sel();
         Ttree mut_(const Ttree &tree0);
         void mut();
-
 
         Ttrees_parameters p;
         LOG logging;

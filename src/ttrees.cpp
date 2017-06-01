@@ -138,7 +138,10 @@ std::vector<size_t> Ttrees::get_sorted_subset(const std::unordered_set<size_t> &
     std::uniform_int_distribution<size_t> uid(0,ntrees-1);
 
     std::unordered_set<size_t> i_ss0;
-    for(int i=0;i<int(p.ratio_ss*ntrees);++i){
+
+    int N = std::max(1,int(p.ratio_ss*ntrees));
+
+    for(int i=0;i<N;++i){
         size_t rv = uid(dre);
         if(excl.find(rv)==excl.end()){
             i_ss0.insert(rv);
@@ -241,7 +244,7 @@ void Ttrees::co(int &num_of_co){
 
     size_t i0 = ii[0];
 
-    excl.insert(i0);
+    //excl.insert(i0);
     ii = get_sorted_subset(excl);
     if(ii.size()<1)
         throw xX_0("co: get_sorted_subset resulted in empty list, try increasing \"ratio_ss\"");
@@ -253,111 +256,6 @@ void Ttrees::co(int &num_of_co){
         num_of_co = 1;
     else
         num_of_co = 0;
-}
-
-void Ttrees::co_full_elite_sel(){
-
-    size_t ntrees = trees.size();
-    if(!ntrees)
-        throw xX_0("trees empty");
-
-    std::uniform_int_distribution<size_t> uid(0,ntrees-1);
-
-    std::set<int> idel;
-    std::unordered_set<size_t> excl;
-
-    for(size_t i0=0;i0<ntrees;++i0){
-        if(idel.find(i0)!=idel.end())
-            continue;
-
-        excl.clear();
-        excl.insert(i0);
-        std::vector<size_t> ii = get_sorted_subset(excl);
-        if(ii.size()<1)
-            throw xX_0("co: get_sorted_subset, second time");
-
-        size_t i1 = ii[0];
-
-        int i_worst = co_and_add_best(i0,i1,false);
-
-        if(i_worst>=0)
-            idel.insert(i_worst);
-
-        errs.push_back(min_err);
-    }
-    num_of_co = trees.size()-ntrees;
-
-    auto i = idel.end();
-    while(idel.end()!=idel.begin()){
-        i--;
-        trees.erase(std::next(trees.begin(),*i));
-
-        if(i==idel.begin())
-            break;
-    }
-}
-void Ttrees::co_full_rand_sel(){
-
-    size_t ntrees = trees.size();
-    if(!ntrees)
-        throw xX_0("trees empty");
-
-    std::uniform_int_distribution<size_t> uid(0,ntrees-1);
-
-    std::set<int> idel;
-
-    for(size_t i0=0;i0<ntrees;++i0){
-        if(idel.find(i0)!=idel.end())
-            continue;
-
-        size_t i1;
-        int i_000=0;
-        while(true){
-            i1=uid(dre);
-            if((i1!=i0 && idel.find(i1)==idel.end()) || i_000++>1e5)
-                break;
-        }
-        if(i_000>1e4)
-            throw xX_0("error");
-
-        int i_worst = 
-            co_and_add_best(i0,i1,false);
-
-        if(i_worst>=0)
-            idel.insert(i_worst);
-    }
-
-    auto i = idel.end();
-    while(idel.end()!=idel.begin()){
-        i--;
-        trees.erase(std::next(trees.begin(),*i));
-
-        if(i==idel.begin())
-            break;
-    }
-}
-
-void Ttrees::co_rand_sel(){
-
-    size_t ntrees = trees.size();
-    if(!ntrees)
-        throw xX_0("trees empty");
-
-    std::uniform_int_distribution<size_t> uid(0,ntrees-1);
-
-    size_t i0 = uid(dre);
-
-    size_t i1;
-    int i_000=0;
-    while(true){
-        i1=uid(dre);
-        if(i1!=i0 || i_000++>1e5)
-            break;
-    }
-    if(i_000>1e4)
-        throw xX_0("error");
-
-    co_and_add_best(i0,i1,true);
 }
 
 
