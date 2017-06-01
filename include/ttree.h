@@ -11,7 +11,6 @@
 #include <memory>
 
 
-
 struct Ttree_parameters{
     Ttree_parameters():
         ndim(0),
@@ -52,6 +51,7 @@ struct Ttree_parameters{
     int consts_n;
     int loss_type;
 };
+
 
 class Ttree{
     public:

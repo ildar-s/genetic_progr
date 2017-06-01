@@ -318,7 +318,7 @@ void Ttrees::co_full_rand_sel(){
                 break;
         }
         if(i_000>1e4)
-            throw xX_0("pizdec");
+            throw xX_0("error");
 
         int i_worst = 
             co_and_add_best(i0,i1,false);
@@ -355,7 +355,7 @@ void Ttrees::co_rand_sel(){
             break;
     }
     if(i_000>1e4)
-        throw xX_0("pizdec");
+        throw xX_0("error");
 
     co_and_add_best(i0,i1,true);
 }

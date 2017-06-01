@@ -593,7 +593,6 @@ int main(int argc, char** argv){
 
     desc_wf.add_options() ("random_tree_demo", po::bool_switch()->default_value(false), 
             "vizualize a random tree and quit");
-    
 
 
     po::options_description desc("All options");
@@ -630,7 +629,6 @@ int main(int argc, char** argv){
     }
 
 
-
     for(auto &k : arg_keys){
         k->fill_p(&vm);
     }
@@ -660,10 +658,8 @@ int main(int argc, char** argv){
     bool csv_has_header = vm["csv_has_header"].as<std::string>()=="yes";
 
 
-
     int n_iter = vm["n_iter"].as<int>();
     bool use_bs = vm["bs"].as<bool>();
-
 
 
     std::map<std::string,LOG> lmap{
@@ -698,7 +694,6 @@ int main(int argc, char** argv){
     catch(...){
         return 1;
     }
-
 
     if(logging == LOG::DEBUG){
         pr("\nGP parameters used:");
